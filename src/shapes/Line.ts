@@ -3,6 +3,7 @@ import {
   CanvasShapeWidget,
   CanvasShapeWidgetBaseAttrConfig,
 } from "../core/CanvasShapeWidget";
+import { CanvasWidgetTypeEnum } from "../core/CanvasWidget";
 import { Point } from "../other/Utils";
 
 export interface LineAttrConfig extends CanvasShapeWidgetBaseAttrConfig {
@@ -22,6 +23,10 @@ class Line extends CanvasShapeWidget {
 
   public getLinePoints(): Point[] {
     return [Object.assign({}, this.p1), Object.assign({}, this.p2)];
+  }
+
+  public override getWidgetType() {
+    return CanvasWidgetTypeEnum.Line;
   }
 
   protected override subPaint(painter: CanvasPainter) {

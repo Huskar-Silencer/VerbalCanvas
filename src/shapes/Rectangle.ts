@@ -34,7 +34,7 @@ export class Rectangle extends CanvasShapeWidget {
     return CanvasWidgetTypeEnum.Rectangle;
   }
 
-  protected calculateCenterPoint() {
+  protected override calculateCenterPoint() {
     const position = this.getPosition();
     this.setCenterPoint({
       x: position.x + this.width / 2,
@@ -42,7 +42,7 @@ export class Rectangle extends CanvasShapeWidget {
     });
   }
 
-  protected calculateBboxConfig() {
+  protected override calculateBboxConfig() {
     const position = this.getPosition();
     this.setBboxConfig({
       x: position.x,
@@ -52,12 +52,13 @@ export class Rectangle extends CanvasShapeWidget {
     });
   }
 
-  protected override subPaint(canvasPainter: CanvasPainter) {
-    canvasPainter.beginPath();
-    const position = this.getPosition();
-    canvasPainter.rect(position.x, position.y, this.width, this.height);
+  protected override subPaint(painter: CanvasPainter) {
     const styleConfig = this.getStyleConfig();
-    if (styleConfig.fillStyle) canvasPainter.fill();
-    if (styleConfig.strokeStyle) canvasPainter.stroke();
+    if (!styleConfig.fillStyle && !styleConfig.strokeStyle) return;
+    painter.beginPath();
+    const position = this.getPosition();
+    painter.rect(position.x, position.y, this.width, this.height);
+    if (styleConfig.fillStyle) painter.fill();
+    if (styleConfig.strokeStyle) painter.stroke();
   }
 }

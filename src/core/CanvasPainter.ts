@@ -25,6 +25,16 @@ export abstract class CanvasPainter {
 
   public rect(x: number, y: number, width: number, height: number) {}
 
+  public ellipse(
+    centerX: number,
+    centerY: number,
+    rx: number,
+    ry: number,
+    rotation: number,
+    startAngle: number,
+    endAngle: number,
+  ) {}
+
   public fill() {}
 
   public stroke() {}
@@ -87,6 +97,18 @@ export class OriginCanvasPainter extends CanvasPainter {
 
   public rect(x: number, y: number, width: number, height: number) {
     this.ctx.rect(x, y, width, height);
+  }
+
+  public ellipse(
+    centerX: number,
+    centerY: number,
+    rx: number,
+    ry: number,
+    rotation: number,
+    startAngle: number,
+    endAngle: number,
+  ) {
+    this.ctx.ellipse(centerX, centerY, rx, ry, rotation, startAngle, endAngle);
   }
 
   public fill() {
