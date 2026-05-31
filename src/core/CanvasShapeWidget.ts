@@ -1,4 +1,4 @@
-import { CanvasWidgetStyleConfig, Point } from "../other/Utils";
+import { CanvasWidgetStyleConfig, Point, rotatePoint } from "../other/Utils";
 import { CanvasWidget, CanvasWidgetBaseAttrConfig } from "./CanvasWidget";
 
 export interface CanvasShapeWidgetBaseAttrConfig extends CanvasWidgetBaseAttrConfig {
@@ -17,11 +17,17 @@ export abstract class CanvasShapeWidget extends CanvasWidget {
     const bBoxConfig = this.getBboxConfig();
     const maxX = bBoxConfig.x + bBoxConfig.width;
     const maxY = bBoxConfig.y + bBoxConfig.height;
-    return [
+    const vertexList = [
       { x: bBoxConfig.x - halfLineWidth, y: bBoxConfig.y - halfLineWidth },
       { x: maxX + halfLineWidth, y: maxY - halfLineWidth },
       { x: maxX + halfLineWidth, y: maxY + halfLineWidth },
       { x: maxX - halfLineWidth, y: maxY + halfLineWidth },
     ];
+    const centerPoint = this.getCenterPoint();
+    const rotation = this.getTransformConfig().rotation;
+    const result = [];
+    for (const vertex of vertexList)
+      result.push(rotatePoint(vertex, centerPoint, rotation));
+    return result;
   }
 }
