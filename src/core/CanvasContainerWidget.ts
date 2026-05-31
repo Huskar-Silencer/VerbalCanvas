@@ -78,9 +78,15 @@ export abstract class CanvasContainerWidget<
     const rectBoxConfig = rectBoxVertexList2RectBoxConfig(
       groupRectBoxVertexList,
     );
+    const newAttrConfig: CanvasContainerWidgetBaseAttrConfig = {
+      position: { x: rectBoxConfig.x, y: rectBoxConfig.y },
+      width: rectBoxConfig.width,
+      height: rectBoxConfig.height,
+    };
+    this.updateAttrConfig(newAttrConfig);
   }
 
-  private calRelativePosition(...children: ChildType[]) {
+  protected calRelativePosition(...children: ChildType[]) {
     const groupPosition = this.getPosition();
     for (const child of children) {
       const childPosition = child.getPosition();
@@ -94,7 +100,7 @@ export abstract class CanvasContainerWidget<
     }
   }
 
-  private restoreRelativePosition(child: ChildType) {
+  protected restoreRelativePosition(child: ChildType) {
     const groupPosition = this.getPosition();
     const relativePosition = child.getPosition();
     child.updateAttrConfig({

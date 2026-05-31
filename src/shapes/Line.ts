@@ -11,7 +11,7 @@ export interface LineAttrConfig extends CanvasShapeWidgetBaseAttrConfig {
   p2?: Point;
 }
 
-class Line extends CanvasShapeWidget {
+export class Line extends CanvasShapeWidget {
   private p1: Point = { x: 0, y: 0 };
   private p2: Point = { x: 0, y: 0 };
 

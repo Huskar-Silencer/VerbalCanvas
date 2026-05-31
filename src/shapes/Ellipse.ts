@@ -10,7 +10,7 @@ export interface EllipseAttrConfig extends CanvasShapeWidgetBaseAttrConfig {
   ry?: number;
 }
 
-class Ellipse extends CanvasShapeWidget {
+export class Ellipse extends CanvasShapeWidget {
   private rx: number = 0;
   private ry: number = 0;
 
