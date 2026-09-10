@@ -9,11 +9,24 @@ export abstract class CanvasPainter {
 
   public restore() {}
 
+  public getContext(): CanvasRenderingContext2D {
+    return null as unknown as CanvasRenderingContext2D;
+  }
+
   public translate(deltaX: number, deltaY: number) {}
 
   public rotate(angle: number) {}
 
   public scale(scaleX: number, scaleY: number) {}
+
+  public transform(
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) {}
 
   public updateStyle(newStyle: CanvasWidgetStyleConfig) {}
 
@@ -38,6 +51,8 @@ export abstract class CanvasPainter {
   public fill() {}
 
   public stroke() {}
+
+  public clearRect(x: number, y: number, width: number, height: number) {}
 
   public setTransform(
     a: number,
@@ -67,6 +82,10 @@ export class OriginCanvasPainter extends CanvasPainter {
     this.ctx.restore();
   }
 
+  public getContext(): CanvasRenderingContext2D {
+    return this.ctx;
+  }
+
   public translate(deltaX: number, deltaY: number) {
     this.ctx.translate(deltaX, deltaY);
   }
@@ -77,6 +96,17 @@ export class OriginCanvasPainter extends CanvasPainter {
 
   public scale(scaleX: number, scaleY: number) {
     this.ctx.scale(scaleX, scaleY);
+  }
+
+  public transform(
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) {
+    this.ctx.transform(a, b, c, d, e, f);
   }
 
   public updateStyle(newStyle: CanvasWidgetStyleConfig) {
@@ -117,6 +147,13 @@ export class OriginCanvasPainter extends CanvasPainter {
 
   public stroke() {
     this.ctx.stroke();
+  }
+
+  public clearRect(x: number, y: number, width: number, height: number) {
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(x, y, width, height);
+    this.ctx.restore();
   }
 
   public setTransform(

@@ -1,5 +1,5 @@
 import { CanvasWidget } from "../core/CanvasWidget";
-import { CanvasWidgetRectboxConfig, Point, rotatePoint } from "./Utils";
+import { Point, Position, rotatePoint } from "./Utils";
 
 export enum TransformTypeEnum {
   TopResize = "top",
@@ -13,14 +13,7 @@ export enum TransformTypeEnum {
   Rotate = "rotate",
 }
 
-export interface TransformResizeCtx {
-  resizeType: TransformTypeEnum;
-  centerPoint: Point;
-  bBoxConfig: CanvasWidgetRectboxConfig;
-  rotation: number;
-  solvedMousePoint: Point;
-  delta: number;
-}
+const MIN_SIZE = 1;
 
 export class Transformer {
   private child: CanvasWidget | null = null;
@@ -39,79 +32,94 @@ export class Transformer {
   private rotateHandle(mousePoint: Point) {
     if (!this.child) return;
     const centerPoint = this.child.getCenterPoint();
-    const angle = Math.atan2(
-      mousePoint.x - centerPoint.x,
-      centerPoint.y - mousePoint.y,
-    );
+    const angle =
+      (Math.atan2(
+        mousePoint.y - centerPoint.y,
+        mousePoint.x - centerPoint.x,
+      ) *
+        180) /
+      Math.PI;
     this.child.updateAttrConfig({ rotation: angle });
-    return;
   }
 
   private resizeHandle(resizeType: TransformTypeEnum, mousePoint: Point) {
     if (!this.child) return;
+
+    const bBoxConfig = this.child.getBboxConfig();
     const centerPoint = this.child.getCenterPoint();
-    const transformHandlerCtx: TransformResizeCtx = {
-      resizeType,
+    const position = this.child.getPosition();
+    const transformConfig = this.child.getTransformConfig();
+
+    const width = bBoxConfig.width;
+    const height = bBoxConfig.height;
+    const halfWidth = (width * transformConfig.scaleX) / 2;
+    const halfHeight = (height * transformConfig.scaleY) / 2;
+    const minX = centerPoint.x - halfWidth;
+    const minY = centerPoint.y - halfHeight;
+    const maxX = centerPoint.x + halfWidth;
+    const maxY = centerPoint.y + halfHeight;
+
+    // Rotate the mouse point back so the anchor is axis-aligned in the unrotated space
+    const localMouse = rotatePoint(
+      mousePoint,
       centerPoint,
-      bBoxConfig: this.child.getBboxConfig(),
-      rotation: this.child.getRotation(),
-      solvedMousePoint: rotatePoint(
-        mousePoint,
-        centerPoint,
-        this.child.getRotation(),
-      ),
-      delta: 0,
+      -transformConfig.rotation,
+    );
+
+    let newMinX = minX;
+    let newMinY = minY;
+    let newMaxX = maxX;
+    let newMaxY = maxY;
+
+    switch (resizeType) {
+      case TransformTypeEnum.RightResize:
+        newMaxX = Math.max(localMouse.x, minX + MIN_SIZE);
+        break;
+      case TransformTypeEnum.LeftResize:
+        newMinX = Math.min(localMouse.x, maxX - MIN_SIZE);
+        break;
+      case TransformTypeEnum.BottomResize:
+        newMaxY = Math.max(localMouse.y, minY + MIN_SIZE);
+        break;
+      case TransformTypeEnum.TopResize:
+        newMinY = Math.min(localMouse.y, maxY - MIN_SIZE);
+        break;
+      case TransformTypeEnum.TopLeftResize:
+        newMinX = Math.min(localMouse.x, maxX - MIN_SIZE);
+        newMinY = Math.min(localMouse.y, maxY - MIN_SIZE);
+        break;
+      case TransformTypeEnum.TopRightResize:
+        newMaxX = Math.max(localMouse.x, minX + MIN_SIZE);
+        newMinY = Math.min(localMouse.y, maxY - MIN_SIZE);
+        break;
+      case TransformTypeEnum.BottomLeftResize:
+        newMinX = Math.min(localMouse.x, maxX - MIN_SIZE);
+        newMaxY = Math.max(localMouse.y, minY + MIN_SIZE);
+        break;
+      case TransformTypeEnum.BottomRightResize:
+        newMaxX = Math.max(localMouse.x, minX + MIN_SIZE);
+        newMaxY = Math.max(localMouse.y, minY + MIN_SIZE);
+        break;
+      default:
+        return;
+    }
+
+    const newScaleX = width !== 0 ? (newMaxX - newMinX) / width : transformConfig.scaleX;
+    const newScaleY = height !== 0 ? (newMaxY - newMinY) / height : transformConfig.scaleY;
+    const newCenter: Point = {
+      x: (newMinX + newMaxX) / 2,
+      y: (newMinY + newMaxY) / 2,
     };
-    const partList = resizeType.split("-") as TransformTypeEnum[];
-    for (const resizeTypePart of partList) {
-      transformHandlerCtx.resizeType = resizeTypePart;
-      transformHandlerCtx.delta = 0;
-      this.resizeDeltaAndReverseHandle(transformHandlerCtx);
-      if (transformHandlerCtx.rotation === 0)
-        this.noRotationResizeCal(transformHandlerCtx);
-      else this.existRotationResizeCal(transformHandlerCtx);
-    }
+    const offset = { x: centerPoint.x - position.x, y: centerPoint.y - position.y };
+    const newPosition: Position = {
+      x: newCenter.x - offset.x,
+      y: newCenter.y - offset.y,
+    };
+
+    this.child.updateAttrConfig({
+      position: newPosition,
+      scaleX: newScaleX,
+      scaleY: newScaleY,
+    });
   }
-
-  private resizeDeltaAndReverseHandle(ctx: TransformResizeCtx) {
-    const maxX = ctx.bBoxConfig.x + ctx.bBoxConfig.width;
-    const maxY = ctx.bBoxConfig.y + ctx.bBoxConfig.height;
-    let delta = 0;
-    const { resizeType, solvedMousePoint, bBoxConfig } = ctx;
-    if (resizeType === "bottom") {
-      delta = solvedMousePoint.y - bBoxConfig.y;
-      if (delta < 0) ctx.resizeType = TransformTypeEnum.TopResize;
-    } else if (resizeType === "top") {
-      delta = maxY - solvedMousePoint.y;
-      if (delta < 0) ctx.resizeType = TransformTypeEnum.BottomResize;
-    } else if (resizeType === "left") {
-      delta = maxX - solvedMousePoint.x;
-      if (delta < 0) ctx.resizeType = TransformTypeEnum.RightResize;
-    } else if (resizeType === "right") {
-      delta = solvedMousePoint.x - bBoxConfig.x;
-      if (delta < 0) ctx.resizeType = TransformTypeEnum.LeftResize;
-    }
-
-    delta = Math.abs(delta);
-    ctx.delta = delta <= 1 ? 1 : delta;
-  }
-
-  private noRotationResizeCal(ctx: TransformResizeCtx) {
-    const { resizeType, bBoxConfig, delta, centerPoint } = ctx;
-    if (resizeType === "bottom") {
-      const newCenterPoint: Point = {
-        x: centerPoint.x,
-        y: bBoxConfig.y + delta / 2,
-      };
-      const newBboxConfig: CanvasWidgetRectboxConfig = {
-        x: bBoxConfig.x,
-        y: bBoxConfig.y,
-        width: bBoxConfig.width,
-        height: delta,
-      };
-    } else if (resizeType === "top") {
-    }
-  }
-
-  private existRotationResizeCal(transformHandlerCtx: TransformResizeCtx) {}
 }

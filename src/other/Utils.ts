@@ -59,7 +59,7 @@ export class SnowflakeId {
     return timestamp;
   }
 
-  public generate(): number {
+  public generate(): string {
     let timestamp = this.now();
     if (timestamp < this.lastTimestamp)
       throw new Error("Clock moved backwards.");
@@ -68,9 +68,10 @@ export class SnowflakeId {
       if (this.sequence === 0) timestamp = this.nextMillis();
     } else this.sequence = 0;
     this.lastTimestamp = timestamp;
-    return (
-      ((timestamp - this.epochStart) << this.sequenceBitCount) | this.sequence
-    );
+    const id =
+      (BigInt(timestamp - this.epochStart) << BigInt(this.sequenceBitCount)) |
+      BigInt(this.sequence);
+    return id.toString();
   }
 }
 
@@ -113,6 +114,24 @@ export function calLineMidPoint(p1: Point, p2: Point): Point {
     x: (p1.x + p2.x) / 2,
     y: (p1.y + p2.y) / 2,
   };
+}
+
+export function distancePointToSegment(
+  point: Point,
+  p1: Point,
+  p2: Point,
+): number {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) {
+    return Math.hypot(point.x - p1.x, point.y - p1.y);
+  }
+  let t = ((point.x - p1.x) * dx + (point.y - p1.y) * dy) / lengthSquared;
+  t = Math.max(0, Math.min(1, t));
+  const projX = p1.x + t * dx;
+  const projY = p1.y + t * dy;
+  return Math.hypot(point.x - projX, point.y - projY);
 }
 
 export function unionRectBox2Config(

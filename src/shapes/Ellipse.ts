@@ -4,6 +4,7 @@ import {
   CanvasShapeWidgetBaseAttrConfig,
 } from "../core/CanvasShapeWidget";
 import { CanvasWidgetTypeEnum } from "../core/CanvasWidget";
+import { Point } from "../other/Utils";
 
 export interface EllipseAttrConfig extends CanvasShapeWidgetBaseAttrConfig {
   rx?: number;
@@ -25,8 +26,8 @@ export class Ellipse extends CanvasShapeWidget {
   protected override calculateCenterPoint() {
     const position = this.getPosition();
     this.setCenterPoint({
-      x: position.x + this.rx / 2,
-      y: position.y + this.ry / 2,
+      x: position.x + this.rx,
+      y: position.y + this.ry,
     });
   }
 
@@ -35,8 +36,8 @@ export class Ellipse extends CanvasShapeWidget {
     this.setBboxConfig({
       x: position.x,
       y: position.y,
-      width: this.rx,
-      height: this.ry,
+      width: this.rx * 2,
+      height: this.ry * 2,
     });
   }
 
@@ -44,14 +45,24 @@ export class Ellipse extends CanvasShapeWidget {
     return CanvasWidgetTypeEnum.Ellipse;
   }
 
+  protected override subUpdateAttr<T extends EllipseAttrConfig>(
+    newAttrConfig: T,
+  ) {
+    if (newAttrConfig.rx !== undefined) this.rx = newAttrConfig.rx;
+    if (newAttrConfig.ry !== undefined) this.ry = newAttrConfig.ry;
+    if (newAttrConfig.rx !== undefined || newAttrConfig.ry !== undefined) {
+      this.calculateCenterPoint();
+      this.calculateBboxConfig();
+    }
+  }
+
   protected override subPaint(painter: CanvasPainter) {
     const styleConfig = this.getStyleConfig();
     if (!styleConfig.fillStyle && !styleConfig.strokeStyle) return;
-    const centerPoint = this.getCenterPoint();
     painter.beginPath();
     painter.ellipse(
-      centerPoint.x,
-      centerPoint.y,
+      this.rx,
+      this.ry,
       this.rx,
       this.ry,
       0,
@@ -60,5 +71,23 @@ export class Ellipse extends CanvasShapeWidget {
     );
     if (styleConfig.fillStyle) painter.fill();
     if (styleConfig.strokeStyle) painter.stroke();
+  }
+
+  protected override getRawLocalBboxVertexList(): Point[] {
+    const width = this.rx * 2;
+    const height = this.ry * 2;
+    return [
+      { x: 0, y: 0 },
+      { x: width, y: 0 },
+      { x: width, y: height },
+      { x: 0, y: height },
+    ];
+  }
+
+  protected override subIsPointInShape(point: Point): boolean {
+    if (this.rx <= 0 || this.ry <= 0) return false;
+    const dx = (point.x - this.rx) / this.rx;
+    const dy = (point.y - this.ry) / this.ry;
+    return dx * dx + dy * dy <= 1;
   }
 }

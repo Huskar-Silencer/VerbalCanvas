@@ -4,6 +4,7 @@ import {
   CanvasShapeWidgetBaseAttrConfig,
 } from "../core/CanvasShapeWidget";
 import { CanvasWidgetTypeEnum } from "../core/CanvasWidget";
+import { Point } from "../other/Utils";
 
 export interface RectangleWidgetAttrConfig extends CanvasShapeWidgetBaseAttrConfig {
   width?: number;
@@ -26,8 +27,12 @@ export class Rectangle extends CanvasShapeWidget {
     newAttrConfig: T,
   ) {
     super.subUpdateAttr(newAttrConfig);
-    if (newAttrConfig.width) this.width = newAttrConfig.width;
-    if (newAttrConfig.height) this.height = newAttrConfig.height;
+    if (newAttrConfig.width !== undefined) this.width = newAttrConfig.width;
+    if (newAttrConfig.height !== undefined) this.height = newAttrConfig.height;
+    if (newAttrConfig.width !== undefined || newAttrConfig.height !== undefined) {
+      this.calculateCenterPoint();
+      this.calculateBboxConfig();
+    }
   }
 
   public override getWidgetType(): string {
@@ -56,9 +61,26 @@ export class Rectangle extends CanvasShapeWidget {
     const styleConfig = this.getStyleConfig();
     if (!styleConfig.fillStyle && !styleConfig.strokeStyle) return;
     painter.beginPath();
-    const position = this.getPosition();
-    painter.rect(position.x, position.y, this.width, this.height);
+    painter.rect(0, 0, this.width, this.height);
     if (styleConfig.fillStyle) painter.fill();
     if (styleConfig.strokeStyle) painter.stroke();
+  }
+
+  protected override getRawLocalBboxVertexList(): Point[] {
+    return [
+      { x: 0, y: 0 },
+      { x: this.width, y: 0 },
+      { x: this.width, y: this.height },
+      { x: 0, y: this.height },
+    ];
+  }
+
+  protected override subIsPointInShape(point: Point): boolean {
+    return (
+      point.x >= 0 &&
+      point.x <= this.width &&
+      point.y >= 0 &&
+      point.y <= this.height
+    );
   }
 }

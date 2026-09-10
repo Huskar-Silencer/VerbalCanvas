@@ -1,4 +1,4 @@
-import { CanvasWidgetStyleConfig, Point, rotatePoint } from "../other/Utils";
+import { CanvasWidgetStyleConfig, Point } from "../other/Utils";
 import { CanvasWidget, CanvasWidgetBaseAttrConfig } from "./CanvasWidget";
 
 export interface CanvasShapeWidgetBaseAttrConfig extends CanvasWidgetBaseAttrConfig {
@@ -10,24 +10,28 @@ export abstract class CanvasShapeWidget extends CanvasWidget {
     super(config);
   }
 
-  public getClientBboxVertexList(): Point[] {
-    const styleConfig = this.getStyleConfig();
-    if (!styleConfig.strokeStyle) return this.getBboxVertexList();
-    const halfLineWidth = styleConfig.lineWidth ?? 1;
-    const bBoxConfig = this.getBboxConfig();
-    const maxX = bBoxConfig.x + bBoxConfig.width;
-    const maxY = bBoxConfig.y + bBoxConfig.height;
-    const vertexList = [
-      { x: bBoxConfig.x - halfLineWidth, y: bBoxConfig.y - halfLineWidth },
-      { x: maxX + halfLineWidth, y: maxY - halfLineWidth },
+  protected abstract getRawLocalBboxVertexList(): Point[];
+
+  protected getLocalBboxVertexList(): Point[] {
+    const raw = this.getRawLocalBboxVertexList();
+    if (raw.length === 0) return [];
+    const lineWidth = this.getStyleConfig().lineWidth ?? 0;
+    const halfLineWidth = lineWidth / 2;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const vertex of raw) {
+      minX = Math.min(minX, vertex.x);
+      minY = Math.min(minY, vertex.y);
+      maxX = Math.max(maxX, vertex.x);
+      maxY = Math.max(maxY, vertex.y);
+    }
+    return [
+      { x: minX - halfLineWidth, y: minY - halfLineWidth },
+      { x: maxX + halfLineWidth, y: minY - halfLineWidth },
       { x: maxX + halfLineWidth, y: maxY + halfLineWidth },
-      { x: maxX - halfLineWidth, y: maxY + halfLineWidth },
+      { x: minX - halfLineWidth, y: maxY + halfLineWidth },
     ];
-    const centerPoint = this.getCenterPoint();
-    const rotation = this.getTransformConfig().rotation;
-    const result = [];
-    for (const vertex of vertexList)
-      result.push(rotatePoint(vertex, centerPoint, rotation));
-    return result;
   }
 }

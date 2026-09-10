@@ -5,7 +5,7 @@ import {
 } from "../core/CanvasWidget";
 import { DeltaValue } from "./Utils";
 
-class Dragger {
+export class Dragger {
   private child: CanvasWidget | null = null;
 
   private deltaValue: DeltaValue = { deltaX: 0, deltaY: 0 };
@@ -14,14 +14,8 @@ class Dragger {
 
   public linkTo(widget: CanvasWidget) {
     if (this.child) this.removeChild();
-    widget.addEvent(
-      CanvasWidgetEventTypeEnum.PointerDown,
-      this.mouseDownHandler,
-    );
-    widget.addEvent(
-      CanvasWidgetEventTypeEnum.PointerMove,
-      this.mouseMoveHandler,
-    );
+    widget.addEvent(CanvasWidgetEventTypeEnum.PointerDown, this.mouseDownHandler);
+    widget.addEvent(CanvasWidgetEventTypeEnum.PointerMove, this.mouseMoveHandler);
     widget.addEvent(CanvasWidgetEventTypeEnum.PointerUp, this.mouseUpHandler);
     this.child = widget;
   }
@@ -46,35 +40,31 @@ class Dragger {
     this.isCatching = false;
   }
 
-  private mouseDownHandler(canvasWidgetEvent: CanvasWidgetEvent) {
-    if (!this.child || !canvasWidgetEvent.nativeEvent) return;
+  private mouseDownHandler = (canvasWidgetEvent: CanvasWidgetEvent) => {
+    if (!this.child) return;
+    const triggerPoint = canvasWidgetEvent.point;
+    if (!triggerPoint) return;
     this.isCatching = true;
-    const triggerPoint = {
-      x: canvasWidgetEvent.nativeEvent.offsetX,
-      y: canvasWidgetEvent.nativeEvent.offsetY,
-    };
     const position = this.child.getPosition();
     this.deltaValue.deltaX = triggerPoint.x - position.x;
     this.deltaValue.deltaY = triggerPoint.y - position.y;
-  }
+  };
 
-  private mouseMoveHandler(canvasWidgetEvent: CanvasWidgetEvent) {
+  private mouseMoveHandler = (canvasWidgetEvent: CanvasWidgetEvent) => {
     if (!this.child || !this.isCatching) return;
     this.followTriggerPoint(canvasWidgetEvent);
-  }
+  };
 
-  private mouseUpHandler(canvasWidgetEvent: CanvasWidgetEvent) {
+  private mouseUpHandler = (canvasWidgetEvent: CanvasWidgetEvent) => {
     if (!this.child || !this.isCatching) return;
     this.isCatching = false;
     this.followTriggerPoint(canvasWidgetEvent);
-  }
+  };
 
   private followTriggerPoint(canvasWidgetEvent: CanvasWidgetEvent) {
-    if (!this.child || !canvasWidgetEvent.nativeEvent) return;
-    const triggerPoint = {
-      x: canvasWidgetEvent.nativeEvent.offsetX,
-      y: canvasWidgetEvent.nativeEvent.offsetY,
-    };
+    if (!this.child) return;
+    const triggerPoint = canvasWidgetEvent.point;
+    if (!triggerPoint) return;
     this.child.updateAttrConfig({
       position: {
         x: triggerPoint.x - this.deltaValue.deltaX,

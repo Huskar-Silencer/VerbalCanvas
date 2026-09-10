@@ -1,8 +1,4 @@
-import {
-  rectBoxConfig2RectBoxVertexList,
-  unionRectBoxVertexList,
-  rectBoxVertexList2RectBoxConfig,
-} from "../other/Utils";
+import { rectBoxVertexList2RectBoxConfig, Point } from "../other/Utils";
 import { CanvasPainter } from "./CanvasPainter";
 import {
   CanvasWidget,
@@ -24,6 +20,10 @@ export abstract class CanvasContainerWidget<
 
   private children: ChildType[] = [];
 
+  private onChildGeometryChange = () => {
+    this.updateSelfCenterPoint();
+  };
+
   constructor(config: CanvasContainerWidgetBaseAttrConfig) {
     super(config);
     this.width = config.width ?? 0;
@@ -43,12 +43,26 @@ export abstract class CanvasContainerWidget<
   }
 
   public addChild(...children: ChildType[]) {
-    for (const child of children) child.place2Parent(this);
+    for (const child of children) {
+      child.place2Parent(this);
+      child.addEvent(
+        CanvasWidgetEventTypeEnum.OnChange,
+        this.onChildGeometryChange,
+      );
+    }
+    this.updateSelfCenterPoint();
     this.emitEvent(CanvasWidgetEventTypeEnum.OnChange);
   }
 
   public removeChild(...children: ChildType[]) {
-    for (const child of children) child.remove();
+    for (const child of children) {
+      child.removeEvent(
+        CanvasWidgetEventTypeEnum.OnChange,
+        this.onChildGeometryChange,
+      );
+      child.remove();
+    }
+    this.updateSelfCenterPoint();
     this.emitEvent(CanvasWidgetEventTypeEnum.OnChange);
   }
 
@@ -56,28 +70,75 @@ export abstract class CanvasContainerWidget<
     return this.children.length;
   }
 
+  // Auto-update the center point (rotation/scale anchor) and self bbox from children
+  protected updateSelfCenterPoint() {
+    const vertices: Point[] = [];
+    for (const child of this.children) {
+      vertices.push(...child.getClientBboxVertexList());
+    }
+    if (vertices.length === 0) return;
+    const rect = rectBoxVertexList2RectBoxConfig(vertices);
+    const position = this.getPosition();
+    this.setCenterPoint({
+      x: position.x + rect.x + rect.width / 2,
+      y: position.y + rect.y + rect.height / 2,
+    });
+    this.setBboxConfig({
+      x: position.x + rect.x,
+      y: position.y + rect.y,
+      width: rect.width,
+      height: rect.height,
+    });
+    this.invalidateWorldBbox();
+  }
+
   protected override subPaint(painter: CanvasPainter) {
     for (const child of this.children) child.paint(painter);
+  }
+
+  protected override subIsPointInShape(point: Point): boolean {
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      if (this.children[i].isPointInShape(point)) return true;
+    }
+    return false;
+  }
+
+  protected override subHitTest(point: Point): CanvasWidget | null {
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      const hit = this.children[i].hitTest(point);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  protected override getLocalBboxVertexList(): Point[] {
+    const vertices: Point[] = [];
+    for (const child of this.children) {
+      const bbox = child.getWorldBbox();
+      vertices.push(
+        { x: bbox.minX, y: bbox.minY },
+        { x: bbox.maxX, y: bbox.minY },
+        { x: bbox.maxX, y: bbox.maxY },
+        { x: bbox.minX, y: bbox.maxY },
+      );
+    }
+    return vertices;
   }
 
   protected override subUpdateAttr<
     T extends CanvasContainerWidgetBaseAttrConfig,
   >(newAttrConfig: T) {
-    if (newAttrConfig.width) this.width = newAttrConfig.width;
-    if (newAttrConfig.height) this.height = newAttrConfig.height;
+    if (newAttrConfig.width !== undefined) this.width = newAttrConfig.width;
+    if (newAttrConfig.height !== undefined) this.height = newAttrConfig.height;
   }
 
   protected calOverallWidthAndHeight(...children: ChildType[]) {
-    let groupRectBoxVertexList = this.getBboxVertexList();
+    if (children.length === 0) return;
+    const vertices: Point[] = [];
     for (const child of children) {
-      const childBboxVertexList = child.getClientBboxVertexList();
-      groupRectBoxVertexList = rectBoxConfig2RectBoxVertexList(
-        unionRectBoxVertexList(groupRectBoxVertexList, childBboxVertexList),
-      );
+      vertices.push(...child.getClientBboxVertexList());
     }
-    const rectBoxConfig = rectBoxVertexList2RectBoxConfig(
-      groupRectBoxVertexList,
-    );
+    const rectBoxConfig = rectBoxVertexList2RectBoxConfig(vertices);
     const newAttrConfig: CanvasContainerWidgetBaseAttrConfig = {
       position: { x: rectBoxConfig.x, y: rectBoxConfig.y },
       width: rectBoxConfig.width,
