@@ -43,6 +43,7 @@ const { CanvasLayer } = await import("./src/core/CanvasLayer.ts");
 const { Dragger } = await import("./src/other/Dragger.ts");
 const { Transformer, TransformTypeEnum } = await import("./src/other/Transformer.ts");
 const { CanvasWidgetEventTypeEnum } = await import("./src/core/CanvasWidget.ts");
+const { Animation } = await import("./src/other/Animation.ts");
 
 let passed = 0, failed = 0;
 function ok(cond, msg) {
@@ -165,6 +166,79 @@ console.log("[8] transformer resize");
   ok(approx(sc.scaleX, 1) && approx(sc.scaleY, 1), "resize to same corner = no change");
   tr.transformHandle(TransformTypeEnum.BottomRightResize, { x: 250, y: 250 });
   ok(rect.getTransformConfig().scaleX > 1, "resize enlarges scaleX");
+}
+
+console.log("[9] levelUp / levelDown");
+{
+  const group = new Group({});
+  const a = new Rectangle({ position: { x: 0, y: 0 }, width: 10, height: 10 });
+  const b = new Rectangle({ position: { x: 0, y: 0 }, width: 10, height: 10 });
+  const c = new Rectangle({ position: { x: 0, y: 0 }, width: 10, height: 10 });
+  group.addChild(a, b, c);
+  ok(group.getChildren()[2] === c, "initial order [a,b,c]");
+
+  a.levelUp();
+  ok(group.getChildren()[0] === b && group.getChildren()[1] === a, "a.levelUp -> [b,a,c]");
+  a.levelDown();
+  ok(group.getChildren()[0] === a && group.getChildren()[1] === b, "a.levelDown -> back to [a,b,c]");
+
+  c.levelDown();
+  ok(group.getChildren()[1] === c && group.getChildren()[2] === b, "c.levelDown -> [a,c,b]");
+  c.levelUp();
+  ok(group.getChildren()[2] === c, "c.levelUp -> back to [a,b,c]");
+
+  c.levelUp(); // already top, no-op
+  ok(group.getChildren()[2] === c && group.getChildren().length === 3, "levelUp at top is no-op");
+  a.levelDown(); // already bottom, no-op
+  ok(group.getChildren()[0] === a, "levelDown at bottom is no-op");
+}
+
+console.log("[10] Animation");
+{
+  let now = 0;
+  let nextId = 1;
+  const pending = new Map();
+  globalThis.requestAnimationFrame = (cb) => { const id = nextId++; pending.set(id, cb); return id; };
+  globalThis.cancelAnimationFrame = (id) => { pending.delete(id); };
+  const step = (ms) => {
+    now += ms;
+    const cbs = [...pending.values()];
+    pending.clear();
+    for (const cb of cbs) cb(now);
+  };
+
+  const frames = [];
+  const anim = new Animation((f) => frames.push(f.frameCount), { times: 3, delay: 0 });
+  anim.start();
+  ok(anim.isRunning() === true, "running after start");
+  step(16);
+  step(16);
+  step(16);
+  ok(frames.join(",") === "1,2,3", "three executions then stop");
+  ok(anim.isRunning() === false, "auto-stopped after times reached");
+
+  const delayed = [];
+  const d = new Animation((f) => delayed.push(f.frameCount), { times: 2, delay: 100 });
+  d.start();
+  step(50);
+  ok(delayed.length === 0, "delay: none before 100ms");
+  step(60); // now = 110
+  ok(delayed.length === 0, "delay: still none (first tick at 50, need 150)");
+  step(50); // now = 160 -> first run
+  ok(delayed.join(",") === "1", "delay: first run after interval");
+  step(50); // now = 210
+  step(50); // now = 260 -> second run, stop
+  ok(delayed.join(",") === "1,2", "delay: second run and stop");
+
+  const infinite = [];
+  const forever = new Animation((f) => infinite.push(f.frameCount), { delay: 0 });
+  forever.start();
+  step(16);
+  step(16);
+  ok(infinite.length === 2, "infinite animation runs each frame");
+  forever.stop();
+  step(16);
+  ok(infinite.length === 2, "stop() halts execution");
 }
 
 console.log(`\nRESULT: ${passed} passed, ${failed} failed`);

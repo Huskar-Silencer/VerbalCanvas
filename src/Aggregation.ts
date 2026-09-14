@@ -7,6 +7,7 @@ import { CanvasHolder } from "./core/CanvasHolder";
 import { CanvasLayer } from "./core/CanvasLayer";
 import { Dragger } from "./other/Dragger";
 import { Transformer } from "./other/Transformer";
+import { Animation } from "./other/Animation";
 
 export const VerbalCanvas = {
   Rectangle,
@@ -18,4 +19,5 @@ export const VerbalCanvas = {
   CanvasLayer,
   Dragger,
   Transformer,
+  Animation,
 } as const;

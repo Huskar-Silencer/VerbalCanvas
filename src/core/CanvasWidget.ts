@@ -247,6 +247,24 @@ export abstract class CanvasWidget {
     return children.findIndex((item) => item === this);
   }
 
+  public levelUp() {
+    if (!this.parent) return;
+    const children = this.parent.getChildren();
+    const index = children.findIndex((item) => item === this);
+    if (index === -1 || index >= children.length - 1) return;
+    [children[index], children[index + 1]] = [children[index + 1], children[index]];
+    this.emitEvent(CanvasWidgetEventTypeEnum.OnChange);
+  }
+
+  public levelDown() {
+    if (!this.parent) return;
+    const children = this.parent.getChildren();
+    const index = children.findIndex((item) => item === this);
+    if (index <= 0) return;
+    [children[index], children[index - 1]] = [children[index - 1], children[index]];
+    this.emitEvent(CanvasWidgetEventTypeEnum.OnChange);
+  }
+
   public getLayer(): CanvasWidget | null {
     let cur: CanvasWidget | null = this;
     while (cur) {
